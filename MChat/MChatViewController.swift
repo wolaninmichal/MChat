@@ -1,13 +1,15 @@
 //
-//  ViewController.swift
+//  MChatViewController.swift
 //  MChat
 //
 //  Created by Michał Wolanin on 19/04/2023.
 //
 
 import UIKit
+import FirebaseAuth
 
-class ViewController: UIViewController {
+
+class MChatViewController: UIViewController {
 
     lazy var tableView: UITableView = {
         let table = UITableView()
@@ -52,29 +54,51 @@ class ViewController: UIViewController {
     }()
     
     var mockData = [
-        "siema 1",
-        "siema 2",
-        "siema 3",
-        "siema 4",
-        "siema 5",
-        "siema 6",
-        "siema 7",
-        "siema 8",
-        "siema 9",
-        "siema 10",
-        "siema 11",
-        "siema 12",
+        "message 1",
+        "message 2",
+        "message 3",
+        "message 4",
+        "message 5",
+        "message 6",
+        "message 7",
+        "message 8",
+        "message 9",
+        "message 10",
+        "message 11",
+        "message 12",
     ]
+    
+    var currentUser: User!
+    init(currentUser: User){
+        self.currentUser = currentUser
+        
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
     
     
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
+        setupNavBar()
         configureUI()
         subscribeToKeyboardShowHide()
 
     }
 
+    private func setupNavBar(){
+        navigationController?.navigationBar.topItem?.title = "MChat"
+        navigationController?.navigationBar.topItem?.rightBarButtonItem = UIBarButtonItem(title: "Sign out", style: .plain, target: self, action: #selector(didTapSignOut))
+        navigationController?.navigationBar.tintColor = .systemRed
+        
+        
+    }
+    
+    
     private func configureUI(){
         view.addSubview(tableView)
         view.addSubview(textView)
@@ -100,14 +124,28 @@ class ViewController: UIViewController {
         ])
     }
     
-    @objc func didTapSend(){
+    @objc private func didTapSend(){
+        //textView.resignFirstResponder()
         if let textMessage = textView.text, textMessage.count > 2 {
             mockData.append(textMessage)
             textView.text = ""
             tableView.reloadData()
+            let index = IndexPath(row: mockData.count-1, section: 0)
+            tableView.scrollToRow(at: index, at: .bottom, animated: true)
         }
     }
     
+    @objc private func didTapSignOut(){
+        do{
+            try AuthManager.shared.signOut()
+            let chatVC = UINavigationController(rootViewController: SignInViewController())
+            (UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate)?.changeRootViewController(vc: chatVC)
+        } catch{
+            print("error didTapSignOut")
+        }
+        
+        
+    }
     
     
     //MARK: - Keyboard Events
@@ -134,7 +172,7 @@ class ViewController: UIViewController {
 }
 
 
-extension ViewController: UITableViewDelegate, UITableViewDataSource {
+extension MChatViewController: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         guard let cell = tableView.dequeueReusableCell(withIdentifier: ChatTableViewCell.identifier, for: indexPath) as? ChatTableViewCell else{
@@ -153,7 +191,7 @@ extension ViewController: UITableViewDelegate, UITableViewDataSource {
     
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return 12
+        return mockData.count
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
@@ -164,10 +202,16 @@ extension ViewController: UITableViewDelegate, UITableViewDataSource {
 }
 
 
-extension ViewController: UITextViewDelegate{
+extension MChatViewController: UITextViewDelegate{
     
+//    zamiast implemenotwac te funkjce wystarczy w textView zmienic textView.returnKeyType = .send na textView.returnKeyType = .default
+
     
-    
-    
-    
+    func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+        if text == "\n"{
+            didTapSend()
+            return false
+        }
+        return true
+    }
 }
