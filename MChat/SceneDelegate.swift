@@ -22,7 +22,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.makeKeyAndVisible()
 
         if let user = Auth.auth().currentUser {
-            window.rootViewController = UINavigationController(rootViewController: MChatViewController())
+            window.rootViewController = UINavigationController(rootViewController: MChatViewController(currentUser: user))
 
         } else {
             window.rootViewController = UINavigationController(rootViewController: SignInViewController())

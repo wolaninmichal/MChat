@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import SDWebImage
 
 class ChatTableViewCell: UITableViewCell {
     
@@ -18,6 +19,9 @@ class ChatTableViewCell: UITableViewCell {
         imageView.clipsToBounds = true
         imageView.image = UIImage(systemName: "person")
         imageView.tintColor = .white
+        
+        imageView.layer.cornerRadius = 16
+        
         return imageView
     }()
     
@@ -54,6 +58,15 @@ class ChatTableViewCell: UITableViewCell {
         fatalError("init(coder:) has not been implemented")
     }
     
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        profileImageView.image = nil
+        chatTextLabel.text = nil
+    }
+    
+    
+    
+    
     private func configureUI(){
         addSubview(profileImageView)
         addSubview(bubbleView)
@@ -78,13 +91,41 @@ class ChatTableViewCell: UITableViewCell {
         imageLeading = profileImageView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8)
         imageTrailing = profileImageView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8)
         
-        textLeading = chatTextLabel.leadingAnchor.constraint(equalTo: profileImageView.trailingAnchor, constant: 8)
-        textTrailing = chatTextLabel.trailingAnchor.constraint(equalTo: profileImageView.leadingAnchor, constant: -8)
+        textLeading = chatTextLabel.leadingAnchor.constraint(equalTo: profileImageView.trailingAnchor, constant: 16)
+        textTrailing = chatTextLabel.trailingAnchor.constraint(equalTo: profileImageView.leadingAnchor, constant: -16)
 
         
     }
 
-    func configureForMessage(message: String, isUser: Bool){
+    func configureForMessage(message: Message, currentUid: String){
+        let isUser = currentUid == message.uid ? true : false
+        chatTextLabel.text = message.text
+        
+        if message.photoURL.count > 0{
+            let url = URL(string: message.photoURL)
+            profileImageView.sd_setImage(with:  url)
+        }
+        
+        if isUser {
+            bubbleView.backgroundColor = .systemBlue
+            imageLeading.isActive = false
+            textLeading.isActive = false
+            
+            imageTrailing.isActive = true
+            textTrailing.isActive = true
+            
+        }
+        else{
+            bubbleView.backgroundColor = .systemGray
+            imageTrailing.isActive = false
+            textTrailing.isActive = false
+            
+            imageLeading.isActive = true
+            textLeading.isActive = true
+        }
+    }
+    
+    func configureForMock(message: String, isUser: Bool){
         chatTextLabel.text = message
         
         if isUser {

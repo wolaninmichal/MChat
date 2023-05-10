@@ -46,7 +46,7 @@ class SignInViewController: UIViewController {
             
             guard let user = result?.user,
                   let idToken = user.idToken?.tokenString,
-                  let strongSelf = self else {
+                  let astrongSelf = self else {
                 print("error with sign in")
                 return
             }
@@ -57,5 +57,5 @@ class SignInViewController: UIViewController {
         }
     }
     
-}
+}    
     

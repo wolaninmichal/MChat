@@ -7,7 +7,7 @@
 
 import UIKit
 import FirebaseAuth
-
+import Combine
 
 class MChatViewController: UIViewController {
 
@@ -53,6 +53,7 @@ class MChatViewController: UIViewController {
         return sendImageView
     }()
     
+    var messages = [Message]()
     var mockData = [
         "message 1",
         "message 2",
@@ -67,6 +68,8 @@ class MChatViewController: UIViewController {
         "message 11",
         "message 12",
     ]
+    
+    var tokens: Set<AnyCancellable> = []
     
     var currentUser: User!
     init(currentUser: User){
@@ -87,14 +90,14 @@ class MChatViewController: UIViewController {
         setupNavBar()
         configureUI()
         subscribeToKeyboardShowHide()
-
+        fetchMessages()
+        subscribeToMessagePublisher()
     }
 
     private func setupNavBar(){
         navigationController?.navigationBar.topItem?.title = "MChat"
         navigationController?.navigationBar.topItem?.rightBarButtonItem = UIBarButtonItem(title: "Sign out", style: .plain, target: self, action: #selector(didTapSignOut))
         navigationController?.navigationBar.tintColor = .systemRed
-        
         
     }
     
@@ -127,10 +130,12 @@ class MChatViewController: UIViewController {
     @objc private func didTapSend(){
         //textView.resignFirstResponder()
         if let textMessage = textView.text, textMessage.count > 2 {
-            mockData.append(textMessage)
+            let msg = Message(text: textMessage, uid: currentUser.uid, photoURL: currentUser.photoURL?.absoluteString ?? "", createdAt: Date())
+            DatabaseManager.shared.sendMessageToDatabase(message: msg) 
+            messages.append(msg)
             textView.text = ""
             tableView.reloadData()
-            let index = IndexPath(row: mockData.count-1, section: 0)
+            let index = IndexPath(row: messages.count-1, section: 0)
             tableView.scrollToRow(at: index, at: .bottom, animated: true)
         }
     }
@@ -164,9 +169,32 @@ class MChatViewController: UIViewController {
     
     @objc func keyboardWillHide(notifaction: Notification){
         let info = notifaction.userInfo!
-        let keyboardFrame: CGRect = (info[UIResponder.keyboardFrameEndUserInfoKey] as! NSValue).cgRectValue
+        let _: CGRect = (info[UIResponder.keyboardFrameEndUserInfoKey] as! NSValue).cgRectValue
         
         self.view.frame.origin.y = 0
+    }
+    
+    //MARK: - Fetch Messages
+    private func fetchMessages(){
+        Task {
+            let msgs = try await DatabaseManager.shared.fetchAllMessages()
+            self.messages = msgs
+            await MainActor.run(body: {
+                self.tableView.reloadData()
+            })
+            print(messages)
+        }
+        
+    }
+    
+    private func subscribeToMessagePublisher(){
+        DatabaseManager.shared.updatedMessagesPublisher.receive(on: DispatchQueue.main).sink { _ in
+        
+        } receiveValue: { messages in
+            self.messages = messages
+            self.tableView.reloadData()
+        }.store(in: &tokens)
+
     }
     
 }
@@ -174,25 +202,29 @@ class MChatViewController: UIViewController {
 
 extension MChatViewController: UITableViewDelegate, UITableViewDataSource {
     
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return messages.count
+    }
+
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         guard let cell = tableView.dequeueReusableCell(withIdentifier: ChatTableViewCell.identifier, for: indexPath) as? ChatTableViewCell else{
             return UITableViewCell()
         }
         
         let index = indexPath.row
-        if index % 2 == 0{
-            cell.configureForMessage(message: mockData[index], isUser: true)
-        }
-        else{
-            cell.configureForMessage(message: mockData[index], isUser: false)
-        }
+//        if index % 2 == 0{
+//            cell.configureForMessage(message: messages[index], isUser: true)
+//        }
+//        else{
+//            cell.configureForMessage(message: messages[index], isUser: false)
+//        }
+        
+        cell.configureForMessage(message: messages[index], currentUid: currentUser.uid)
+        cell.selectionStyle = .none
         return cell
     }
     
-    
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return mockData.count
-    }
+
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: false)
